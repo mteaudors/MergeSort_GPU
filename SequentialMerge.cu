@@ -30,5 +30,9 @@ int main()
 
 	for (int i = 0; i < 10; ++i)
 		printf("M[%d] = %d, ", i, *(M + i));
+
+	free(A);
+	free(B);
+	free(C);
     return 0;
 }
