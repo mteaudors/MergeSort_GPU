@@ -1,34 +1,35 @@
 #include "cuda_header.h"
 
-#define LENGTH_A 1024
-#define LENGTH_B 1024
+#define LENGTH_A 10
+#define LENGTH_B 8
+
+#define BLOCKSIZE 10
+
 
 void sequential_merge_sort(int *A, int *B, int *M, int length_A, int length_B) {
-        int i = 0, j = 0;
-        int length_M = length_A + length_B;
-        while (i + j < length_M) {
-                if (j >= length_B || *(A + i) < *(B + j))
-                        M[i + j] = A[i++];
-                else
-                        M[i + j] = B[j++];
+	
+    int i = 0, j = 0;
+    int length_M = length_A + length_B;
+    
+    while (i + j < length_M) {
+		if (j >= length_B || (i<length_A && A[i]<B[j])) {
+            M[i + j] = A[i++];
         }
+		else {
+            M[i + j] = B[j++];
+        }	
+	}
 }
 
 void test() {
         int *A = generate_array(5);
         int *B = generate_array(6);
         int *M = (int*)malloc(11 * sizeof(int));
-        for (int i = 0; i < 5; ++i)
-                printf("A[%d] = %d, ", i, *(A + i));
-        printf("\n");
-        for (int i = 0; i < 6; ++i)
-                printf("B[%d] = %d, ", i, *(B + i));
-        printf("\n");
-
+       
         sequential_merge_sort(A, B, M, 5, 6);
-
-        for (int i = 0; i < 11; ++i)
-                printf("M[%d] = %d, ", i, *(M + i));
+        print_array(M , 11, "M");
+        sequential_merge_sort(B, A, M, 6, 5);
+        print_array(M , 11, "M");
 
         free(A);
         free(B);
@@ -78,41 +79,56 @@ __global__ void mergeSmall_k(int *A, int length_A, int *B, int length_B, int *M)
 }
 
 void question_1() {
-        int* A = generate_array(LENGTH_A * sizeof(int));
-        printf("A = \n");
-        print_array(A, LENGTH_A);
-        int* B = generate_array(LENGTH_B * sizeof(int));
-        printf("B = \n");
-        print_array(B, LENGTH_B);
-        int* M = (int*)malloc((LENGTH_A + LENGTH_B) * sizeof(int));
-        int *dev_a = 0;
-        int *dev_b = 0;
-        int *dev_m = 0;
+    
+    // Allocate CPU buffers for three vectors (two input, one output).
+    int* A = generate_array(LENGTH_A * sizeof(int));
+    int* B = generate_array(LENGTH_B * sizeof(int));
+    int* M = (int*)malloc((LENGTH_A + LENGTH_B) * sizeof(int));
+   
+    // Declare GPU buffers
+    int *dev_a = 0;
+    int *dev_b = 0;
+    int *dev_m = 0;
 
-        // Allocate GPU buffers for three vectors (two input, one output).
-        testCUDA(cudaMalloc((void**)&dev_a, LENGTH_A * sizeof(int)));
-        testCUDA(cudaMalloc((void**)&dev_b, LENGTH_B * sizeof(int)));
-        testCUDA(cudaMalloc((void**)&dev_m, (LENGTH_A + LENGTH_B) * sizeof(int)));
+    // Allocate GPU buffers for three vectors (two input, one output).
+    testCUDA(cudaMalloc((void**)&dev_a, LENGTH_A * sizeof(int)));
+    testCUDA(cudaMalloc((void**)&dev_b, LENGTH_B * sizeof(int)));
+    testCUDA(cudaMalloc((void**)&dev_m, (LENGTH_A + LENGTH_B) * sizeof(int)));
 
-        // Copy input vectors from host memory to GPU buffers.
-        testCUDA(cudaMemcpy(dev_a, A, LENGTH_A * sizeof(int), cudaMemcpyHostToDevice));
-        testCUDA(cudaMemcpy(dev_b, B, LENGTH_B * sizeof(int), cudaMemcpyHostToDevice));
+    // Copy input vectors from host memory to GPU buffers.
+    testCUDA(cudaMemcpy(dev_a, A, LENGTH_A * sizeof(int), cudaMemcpyHostToDevice));
+    testCUDA(cudaMemcpy(dev_b, B, LENGTH_B * sizeof(int), cudaMemcpyHostToDevice));
 
-        mergeSmall_k << <4, 512 >> > (dev_a, LENGTH_A, dev_b, LENGTH_B, dev_m);
-        cudaDeviceSynchronize();
-        printf("M = \n");
-        testCUDA(cudaMemcpy(M, dev_m, (LENGTH_A + LENGTH_B) * sizeof(int), cudaMemcpyDeviceToHost));
+    // Launch merge kernel on GPU
+    mergeSmall_k << <1, LENGTH_A+LENGTH_B >> > (dev_a, LENGTH_A, dev_b, LENGTH_B, dev_m);
 
-        print_array(M, LENGTH_A + LENGTH_B);
+    // Wait until work is done
+    cudaDeviceSynchronize();
 
-        free(A);
-        free(B);
-        free(M);
+    // Copy result from GPU RAM into CPU RAM
+    testCUDA(cudaMemcpy(M, dev_m, (LENGTH_A + LENGTH_B) * sizeof(int), cudaMemcpyDeviceToHost));
+
+    
+    print_array(A, LENGTH_A, "A");
+    print_array(B, LENGTH_B, "B");
+    print_array(M, LENGTH_A + LENGTH_B , "M");
+
+    // Free both CPU and GPU memory allocated
+    free(A);
+    free(B);
+    free(M);
+    testCUDA(cudaFree(dev_a));
+    testCUDA(cudaFree(dev_b));
+    testCUDA(cudaFree(dev_m));
 }
 
 int main()
-{
-        //test();
-        question_1();
+{   
+    // initialize random seed
+    srand(time(0));
+    
+    //test();
+    question_1();
+
     return 0;
 }
