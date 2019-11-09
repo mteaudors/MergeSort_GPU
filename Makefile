@@ -1,7 +1,7 @@
 all: build
 
 build: 
-	nvcc -o SequentialMerge.exe SequentialMerge.cu
+	nvcc -o sequentielMerge.exe sequentielMerge.cu
 
 exec:
-	./SequentialMerge.exe
+	./sequentielMerge.exe
