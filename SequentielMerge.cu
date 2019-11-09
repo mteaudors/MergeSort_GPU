@@ -69,7 +69,7 @@ __global__ void mergeSmall_k(int *A, int length_A, int *B, int length_B, int *M)
                                 break;
                         }else {
                                 K.x = Q.x + 1;
-                                K.y = Q.y + 1;
+                                K.y = Q.y - 1;
                         }
                 }else {
                         P.x = Q.x - 1;
