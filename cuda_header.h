@@ -14,13 +14,20 @@ void testcuda(cudaError_t error, const char *file, int line) {
 	}
 }
 
-#define testCUDA(error) (testcuda(error, __file__, __line__))
+#define testCUDA(error) (testcuda(error, __FILE__, __LINE__))
 
 int* generate_array(int length) {
 	int* arr = (int*)malloc(length * sizeof(int));
 	for (int i = 0; i < length; ++i)
-		*(arr + i) = i * (i + 4);
+		*(arr + i) = i * (length + 4);
 	return arr;
+}
+
+void print_array(int *arr, int length) {
+	for (int i = 0; i < length - 1; ++i)
+		printf("arr[%d] = %d, ", i, *(arr + i));
+
+	printf("arr[%d] = %d\n", length - 1, *(arr + length - 1));
 }
 
 #endif // CUDA_HEADER_H
