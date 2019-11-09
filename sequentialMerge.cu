@@ -33,6 +33,6 @@ int main()
 
 	free(A);
 	free(B);
-	free(C);
+	free(M);
     return 0;
 }
