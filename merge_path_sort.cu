@@ -71,8 +71,8 @@ __global__ void mergeSmall_k(int *A, int length_A, int *B, int length_B, int *M)
 void question_1() {
 
 	// Allocate CPU buffers for three vectors (two input, one output).
-	int* A = generate_array(LENGTH_A);
-	int* B = generate_array(LENGTH_B);
+	int* A = generate_array(SIZE_A);
+	int* B = generate_array(SIZE_B);
 	int* M = (int*)malloc(LENGTH_M);
 
 	// Declare GPU buffers
@@ -114,13 +114,17 @@ void question_1() {
 __device__ int A_diag[SIZE_M];
 __device__ int B_diag[SIZE_M];
 
-/* Simple application de l'algorithme donné dans l'article. */
+/**
+	Find the intersection between one diagonal and the merge path.
+*/
 __global__ void pathBig_k(int *A, int length_A, int *B, int length_B) {
 	int nb_threads = gridDim.x * blockDim.x;
 	int i = threadIdx.x + blockIdx.x * blockDim.x;
-	int index = i * (length_A + length_B) / nb_threads;
-	int a_top = (index > length_A) ? length_A : index;
-	int b_top = (index > length_A) ? index - length_A : 0;
+	int index_diag = i * (length_A + length_B) / nb_threads;
+	
+	printf("thread %d from block %d working on diag %d\n",i,blockIdx.x,index_diag);
+	int a_top = (index_diag > length_A) ? length_A : index_diag;
+	int b_top = (index_diag > length_A) ? index_diag - length_A : 0;
 	int a_bot = b_top;
 	while (true) {
 		int offset = (a_top - a_bot) / 2;
@@ -130,6 +134,8 @@ __global__ void pathBig_k(int *A, int length_A, int *B, int length_B) {
 			if (A[a_i - 1] > B[b_i]) {
 				A_diag[i] = a_i;
 				B_diag[i] = b_i;
+				printf("found thread %d in block %d\n",i,blockIdx.x);
+				break;
 			}
 			else {
 				a_top = a_i - 1;
@@ -148,11 +154,11 @@ __global__ void mergeBig_k(int *A, int length_A, int *B, int length_B, int* M) {
 	int length = (length_A + length_B) / nb_threads;
 	__shared__ float shared_A[1024];
 	__shared__ float shared_B[1024];
-	printf("le thread %d fait les valeurs %d jusqu'à %d, donc [%d,%d] jusqu'à [%d,%d]\n", 
+	printf("le thread %d fait les valeurs %d jusqu'ï¿½ %d, donc [%d,%d] jusqu'ï¿½ [%d,%d]\n", 
 		index, index * length, (index + 1) * length-1, A_diag[index * length], B_diag[index * length], A_diag[(index + 1) * length - 1], B_diag[(index + 1) * length - 1]);
 
 	/*
-	Malgré la réponse du prof, je vois toujours pas l'utilité de faire ça, ramener en shared puis affter à M...
+	Malgre la reponse du prof, je vois toujours pas l'utilite de faire ca, ramener en shared puis affter ...
 	*/
 
 	/* Je suis pas sur de cette boucle pour ramener, parce que j'ai pas lu l'article, et je ne sais donc pas exactement ce que contient A_diag et B_diag. */
@@ -161,9 +167,9 @@ __global__ void mergeBig_k(int *A, int length_A, int *B, int length_B, int* M) {
 		shared_B[threadIdx.x * length + i] = B_diag[index * length + i];
 	}
 
-	__syncthreads();// wait for each thread to copy its element
+	__syncthreads(); // wait for each thread to copy its element
 
-	/* Encore moins sur qu'avant, je ne sais pas s'il y a des conditions à mettre ou autre chose. */
+	/* Encore moins sur qu'avant, je ne sais pas s'il y a des conditions ï¿½ mettre ou autre chose. */
 	for (int i = 0; i < length; ++i) {
 		int temp_a = shared_A[threadIdx.x * length + i];
 		int temp_b = shared_B[threadIdx.x * length + i];
@@ -172,10 +178,10 @@ __global__ void mergeBig_k(int *A, int length_A, int *B, int length_B, int* M) {
 }
 
 void question_2() {
-
+	
 	// Allocate CPU buffers for three vectors (two input, one output).
-	int* A = generate_array(LENGTH_A);
-	int* B = generate_array(LENGTH_B);
+	int* A = generate_array(SIZE_A);
+	int* B = generate_array(SIZE_B);
 	int* M = (int*)malloc(LENGTH_M);
 
 	// Declare GPU buffers
@@ -192,14 +198,25 @@ void question_2() {
 	testCUDA(cudaMemcpy(dev_a, A, LENGTH_A, cudaMemcpyHostToDevice));
 	testCUDA(cudaMemcpy(dev_b, B, LENGTH_B, cudaMemcpyHostToDevice));
 
+	print_array(A , SIZE_A , "A");
+	print_array(B , SIZE_B , "B");
+
+	printf("Before pathBig\n");
 	// Launch path kernel on GPU
+	
+	//printf("Launch %d blocks of %d threads\n",GRIDSIZE(SIZE_M),BLOCKSIZE);
+	//pathBig_k<<<GRIDSIZE(SIZE_M), BLOCKSIZE>>>(dev_a, SIZE_A, dev_b, SIZE_B);
+	
 	pathBig_k<<<1, SIZE_M>>>(dev_a, SIZE_A, dev_b, SIZE_B);
+
 
 	// Wait until work is done
 	cudaDeviceSynchronize();
 
+	printf("Before mergeBig\n");
 	// Launch merge kernel on GPU
 	mergeBig_k << <1, SIZE_M >> > (dev_a, SIZE_A, dev_b, SIZE_B, dev_m);
+	printf("After mergeBig\n");
 
 	// Wait until work is done
 	cudaDeviceSynchronize();

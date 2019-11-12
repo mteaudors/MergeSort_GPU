@@ -1,7 +1,7 @@
 all: build
 
 build: 
-	nvcc -o sequentielMerge.exe sequentielMerge.cu
+	nvcc -o merge_path_sort.exe merge_path_sort.cu
 
 exec:
-	./sequentielMerge.exe
+	.\merge_path_sort.exe
