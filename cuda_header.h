@@ -10,7 +10,7 @@
 #include <ctime>
 
 #define SIZE_A 32
-#define SIZE_B 64
+#define SIZE_B 32
 #define SIZE_M (SIZE_A + SIZE_B)
 
 #define LENGTH_A (SIZE_A * sizeof(int))
@@ -44,15 +44,14 @@ int* generate_array(int length) {
 }
 
 void print_array(int *arr, int length, std::string name) {
-	printf("############### %s ###############\n",name.c_str());
+	printf("############### %s ###############\n\n",name.c_str());
 	for (int i = 0; i < length ; ++i) {
 		printf("%s[%d] = %d", name.c_str(), i, *(arr + i));
 		
 		if(i>0 && arr[i-1] > arr[i]) {
-                printf("\n!!! Array not sorted : %s[%d] = %d > %s[%d] = %d !!!\n",name.c_str(),i-1,arr[i-1],name.c_str(),i,arr[i]);
-                break;
+			printf("\nArray sorted : %s[%d] = %d > %s[%d] = %d\n",name.c_str(),i-1,arr[i-1],name.c_str(),i,arr[i]);
+			break;
         }
-
 		if(i != length-1) printf(", ");
 	}
 	printf("\n");
