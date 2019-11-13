@@ -12,6 +12,7 @@
 #define SIZE_A 1024
 #define SIZE_B 1024
 #define SIZE_M (SIZE_A + SIZE_B)
+#define D 32
 
 #define LENGTH_A (SIZE_A * sizeof(int))
 #define LENGTH_B (SIZE_B * sizeof(int))
@@ -51,15 +52,31 @@ int* generate_array(int length) {
 	return arr;
 }
 
+int* generate_unsorted_array(int length) {
+	int* arr = (int*) malloc(length*sizeof(int));
+	for (int i = 0; i < length; ++i)
+		arr[i] = rand()%10000;
+	return arr;
+}
+
 void print_array(int *arr, int length, std::string name) {
-	printf("############### %s ###############\n\n",name.c_str());
+	printf("\n############### %s ###############\n\n",name.c_str());
 	for (int i = 0; i < length ; ++i) {
 		printf("%s[%d] = %d", name.c_str(), i, *(arr + i));
 		
 		if(i>0 && arr[i-1] > arr[i]) {
-			printf("\nArray sorted : %s[%d] = %d > %s[%d] = %d\n",name.c_str(),i-1,arr[i-1],name.c_str(),i,arr[i]);
+			printf("\nArray not sorted : %s[%d] = %d > %s[%d] = %d\n",name.c_str(),i-1,arr[i-1],name.c_str(),i,arr[i]);
 			break;
         }
+		if(i != length-1) printf(", ");
+	}
+	printf("\n");
+}
+
+void print_unsorted_array(int *arr, int length, std::string name) {
+	printf("\n############### %s ###############\n\n",name.c_str());
+	for (int i = 0; i < length ; ++i) {
+		printf("%s[%d] = %d", name.c_str(), i, *(arr + i));
 		if(i != length-1) printf(", ");
 	}
 	printf("\n");

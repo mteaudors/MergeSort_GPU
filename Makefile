@@ -1,7 +1,10 @@
 all: build
 
 build: 
-	nvcc -o merge_path_sort.exe merge_path_sort.cu
+	nvcc -o mergeSort.exe mergeSort.cu 
+#	nvcc -o merge_path_sort.exe merge_path_sort.cu
+#	nvcc -o merge_path_sort_multiple.exe merge_path_sort_multiple.cu
+	
 
 exec:
-	.\merge_path_sort.exe
+	.\mergeSort.exe
