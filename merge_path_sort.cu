@@ -8,11 +8,11 @@ __device__ int B_diag[SIZE_M];
 	Find the intersection between one diagonal and the merge path.
 */
 __global__ void pathBig_k(int *A, int length_A, int *B, int length_B) {
-	int nb_threads = gridDim.x * blockDim.x;
-	int i = threadIdx.x + blockIdx.x * blockDim.x;
-	int index_diag = i * (length_A + length_B) / nb_threads;
+		int nb_threads = gridDim.x * blockDim.x;
+		int i = threadIdx.x + blockIdx.x * blockDim.x;
+		int index_diag = i * (length_A + length_B) / nb_threads;
 
-	duo K, P, Q;
+		duo K, P, Q;
         if (i > length_A) {
                 K.x = i - length_A;
                 K.y = length_A;

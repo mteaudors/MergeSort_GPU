@@ -9,15 +9,23 @@
 #include <string>
 #include <ctime>
 
-#define SIZE_A 32
-#define SIZE_B 32
+#define SIZE_A 1024
+#define SIZE_B 1024
 #define SIZE_M (SIZE_A + SIZE_B)
 
 #define LENGTH_A (SIZE_A * sizeof(int))
 #define LENGTH_B (SIZE_B * sizeof(int))
 #define LENGTH_M (SIZE_M * sizeof(int))
 
-#define BLOCKSIZE 32
+#define ARRAY_NUMBER 64
+#define ARRAY_SIZES 64
+#define TWO_ARRAY_SIZE (ARRAY_SIZES * 2)
+#define TOTAL_SIZE (ARRAY_NUMBER * ARRAY_SIZES)
+
+#define ARRAY_LENGTH (ARRAY_SIZES * sizeof(int))
+#define TOTAL_LENGTH (TOTAL_SIZE * sizeof(int))
+
+#define BLOCKSIZE 64
 #define GRIDSIZE(DATA_SIZE) (((DATA_SIZE) + (BLOCKSIZE) - 1)/(BLOCKSIZE))
 
 typedef struct {
@@ -28,7 +36,7 @@ typedef struct {
 void testcuda(cudaError_t error, const char *file, int line) {
 	if (error != cudaSuccess) {
 		fprintf(stderr, "error in file %s at line %d\n", file, line);
-		//fprintf(stderr, "error is %s : %s\n", cudaGetErrorName(error), cudaGetErrorString(error));
+		fprintf(stderr, "error is %s : %s\n", cudaGetErrorName(error), cudaGetErrorString(error));
 		exit(1);
 	}
 }

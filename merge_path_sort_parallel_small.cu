@@ -39,7 +39,7 @@ __global__ void mergeSmall_k(int *A, int length_A, int *B, int length_B, int *M)
 		}
 }
 
-int mainint argc, char *argv[]) {
+int main(int argc, char *argv[]) {
     // Allocate CPU buffers for three vectors (two input, one output).
 	int* A = generate_array(SIZE_A);
 	int* B = generate_array(SIZE_B);
