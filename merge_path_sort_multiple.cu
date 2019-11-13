@@ -107,10 +107,10 @@ int main()
 
 	// Allocate GPU buffers for three vectors (two input, one output).
 	testCUDA(cudaMalloc((void**)&dev_a, ARRAY_LENGTH));
+	testCUDA(cudaMalloc((void**)&dev_b, TOTAL_LENGTH - ARRAY_LENGTH));
+	testCUDA(cudaMalloc((void**)&dev_m, TOTAL_LENGTH));
 
 	for (int i = 0; i < ARRAY_NUMBER; ++i) {
-		testCUDA(cudaMalloc((void**)&dev_b, i * ARRAY_LENGTH));
-		testCUDA(cudaMalloc((void**)&dev_m, ARRAY_LENGTH + i * ARRAY_LENGTH));
 
 		testCUDA(cudaMemcpy(dev_a, array[i], ARRAY_LENGTH, cudaMemcpyHostToDevice));
 		testCUDA(cudaMemcpy(dev_b, M, i * ARRAY_LENGTH, cudaMemcpyHostToDevice));
@@ -130,15 +130,14 @@ int main()
 
 		// Copy result from GPU RAM into CPU RAM
 		testCUDA(cudaMemcpy(M, dev_m, ARRAY_LENGTH + i * ARRAY_LENGTH, cudaMemcpyDeviceToHost));
-
-		testCUDA(cudaFree(dev_m));
-		testCUDA(cudaFree(dev_b));
 	}
 
 	// print arrays
 	print_array(M, TOTAL_SIZE, "M");
 
 	// Free both CPU and GPU memory allocated
+	testCUDA(cudaFree(dev_m));
+	testCUDA(cudaFree(dev_b));
 	testCUDA(cudaFree(dev_a));
 	for (int i = 0; i < ARRAY_NUMBER; ++i) {
 		free(array[i]);
