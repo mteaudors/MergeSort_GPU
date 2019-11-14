@@ -80,13 +80,12 @@ void mergeSortGPU (int *M , int length) {
     
     int mergeSize = 2;
     while(mergeSize <= length) {
-        testCUDA(cudaMemcpy(M_dev_copy , M_dev , D*sizeof(int), cudaMemcpyDeviceToDevice));
+		testCUDA(cudaMemcpy(M_dev_copy, M_dev, D * sizeof(int), cudaMemcpyDeviceToDevice));
         for(int k=0 ; k<length/mergeSize ; ++k) {
             pathBig_k<<<1,mergeSize>>>(M_dev+k*mergeSize, mergeSize/2, M_dev+(2*k+1)*(mergeSize/2), mergeSize/2, mergeSize*k);
-            testCUDA(cudaDeviceSynchronize());  
             mergeBig_k<<<1,mergeSize>>>(M_dev_copy+k*mergeSize, mergeSize/2, M_dev_copy+(2*k+1)*(mergeSize/2), mergeSize/2, M_dev+k*mergeSize, mergeSize*k);
-            testCUDA(cudaDeviceSynchronize());  
         }
+		testCUDA(cudaDeviceSynchronize());
         mergeSize *= 2;
     }
     
