@@ -12,7 +12,7 @@
 #define SIZE_A 1024
 #define SIZE_B 1024
 #define SIZE_M (SIZE_A + SIZE_B)
-#define D 32
+#define D 128
 
 #define LENGTH_A (SIZE_A * sizeof(int))
 #define LENGTH_B (SIZE_B * sizeof(int))

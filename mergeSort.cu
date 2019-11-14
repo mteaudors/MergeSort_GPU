@@ -6,6 +6,7 @@ __device__ int B_diag[D];
 
 /**
 	Find the intersection between one diagonal and the merge path.
+	ça sert à r de mettre + de thread que d'diag.
 */
 __global__ void pathBig_k(int *A, int length_A, int *B, int length_B, int start_diag) {
 		int nb_threads = gridDim.x * blockDim.x;
@@ -54,20 +55,12 @@ __global__ void mergeBig_k(int *A, int length_A, int *B, int length_B, int* M, i
 	int length = (length_A + length_B) / nb_threads;
 	int start_M = i*(length_A+length_B)/ nb_threads;
 
-    __shared__ int A_index[D];
-    __shared__ int B_index[D];
-
-    for(int k=0 ; k<length ; ++k) {
-		A_index[start_diag + start_M + k] = A_diag[start_diag + start_M + k];
-		B_index[start_diag + start_M + k] = B_diag[start_diag + start_M + k];
-	}
-
 	for(int k=0 ; k<length ; ++k) {
         int i = start_diag + start_M + k;
-		if (A_index[i] < length_A && (B_index[i] == length_B || A[A_index[i]] <= B[B_index[i]])) {
-            M[start_M + k] = A[A_index[i]];
+		if (A_diag[i] < length_A && (B_diag[i] == length_B || A[A_diag[i]] <= B[B_diag[i]])) {
+            M[start_M + k] = A[A_diag[i]];
 		} else {
-			M[start_M + k] = B[B_index[i]];
+			M[start_M + k] = B[B_diag[i]];
 		}
 	}
 }
@@ -78,50 +71,57 @@ Qt = indice du groupe de travail du thread actuel
 gbx = indice du thread pour accéder à la mémoire globale, indice d'un groupe de thread dans l'ensemble des threads pour pouvoir accéder à la RAM
 */
 
-void mergeSortGPU (int *M , int length) {
+
+void mergeSortGPU (int *M , int length, float *timer) {
     int *M_dev, *M_dev_copy;
+	int mergeSize = 2;
+	cudaEvent_t start, stop;
+
+	testCUDA(cudaEventCreate(&start));
+	testCUDA(cudaEventCreate(&stop));
+
     testCUDA(cudaMalloc((void**)&M_dev , D*sizeof(int)));
     testCUDA(cudaMalloc((void**)&M_dev_copy , D*sizeof(int)));
     testCUDA(cudaMemcpy(M_dev, M,D*sizeof(int), cudaMemcpyHostToDevice));
+
+	cudaEventRecord(start, 0);
     
-    int mergeSize = 2;
     while(mergeSize <= length) {
 		testCUDA(cudaMemcpy(M_dev_copy, M_dev, D * sizeof(int), cudaMemcpyDeviceToDevice));
+		for (int k = 0; k < (length / mergeSize); ++k) {
+			pathBig_k << <1, mergeSize >> > (M_dev + k * mergeSize, mergeSize / 2, M_dev + (2 * k + 1)*(mergeSize / 2), mergeSize / 2, mergeSize*k);
+		}
+		testCUDA(cudaDeviceSynchronize());
         for(int k=0 ; k<length/mergeSize ; ++k) {
-            pathBig_k<<<1,mergeSize>>>(M_dev+k*mergeSize, mergeSize/2, M_dev+(2*k+1)*(mergeSize/2), mergeSize/2, mergeSize*k);
-			/*
-			on doit enlever celui là car le merge_i doit attendre la fin de path_i, mais là dans l'immédiat on a le fait 
-			que merge_i+1 attend path_i+1 et merge_i, ce qui n'est pas du tout nécessaire, d'où le fait qu'on doit faire
-			un kernel qui lance les deux autres, pour avoir la seule synchro nécessaire
-			*/
-			testCUDA(cudaDeviceSynchronize());
 			mergeBig_k<<<1,mergeSize>>>(M_dev_copy+k*mergeSize, mergeSize/2, M_dev_copy+(2*k+1)*(mergeSize/2), mergeSize/2, M_dev+k*mergeSize, mergeSize*k);
         }
 		testCUDA(cudaDeviceSynchronize());
         mergeSize *= 2;
     }
+
+	cudaEventRecord(stop, 0);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(timer, start, stop);
     
     testCUDA(cudaMemcpy(M, M_dev,D*sizeof(int), cudaMemcpyDeviceToHost));
     testCUDA(cudaFree(M_dev));
     testCUDA(cudaFree(M_dev_copy));
 
+	testCUDA(cudaEventDestroy(start));
+	testCUDA(cudaEventDestroy(stop));
 }
-
 
 int main(int argc , char *argv[]) {
     // initialize random seed
     srand(time(0));
+	float TimerAdd = 0;
 
     int* M = generate_unsorted_array(D);
     print_unsorted_array(M , D , "M");
 
-    mergeSortGPU(M,D);
+    mergeSortGPU(M,D, &TimerAdd);
 
     print_array(M,D,"M");
+	printf("Time elapsed : %f ms\n", TimerAdd);
     free(M);
 }
-
-
-
-
-
