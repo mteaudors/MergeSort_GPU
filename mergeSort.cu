@@ -72,6 +72,12 @@ __global__ void mergeBig_k(int *A, int length_A, int *B, int length_B, int* M, i
 	}
 }
 
+/*
+tidx = indice du thread dans son groupe de tableaux à trier, genre 32 tableaux de 32 cases à trier dans un block
+Qt = indice du groupe de travail du thread actuel
+gbx = indice du thread pour accéder à la mémoire globale, indice d'un groupe de thread dans l'ensemble des threads pour pouvoir accéder à la RAM
+*/
+
 void mergeSortGPU (int *M , int length) {
     int *M_dev, *M_dev_copy;
     testCUDA(cudaMalloc((void**)&M_dev , D*sizeof(int)));
@@ -83,7 +89,13 @@ void mergeSortGPU (int *M , int length) {
 		testCUDA(cudaMemcpy(M_dev_copy, M_dev, D * sizeof(int), cudaMemcpyDeviceToDevice));
         for(int k=0 ; k<length/mergeSize ; ++k) {
             pathBig_k<<<1,mergeSize>>>(M_dev+k*mergeSize, mergeSize/2, M_dev+(2*k+1)*(mergeSize/2), mergeSize/2, mergeSize*k);
-            mergeBig_k<<<1,mergeSize>>>(M_dev_copy+k*mergeSize, mergeSize/2, M_dev_copy+(2*k+1)*(mergeSize/2), mergeSize/2, M_dev+k*mergeSize, mergeSize*k);
+			/*
+			on doit enlever celui là car le merge_i doit attendre la fin de path_i, mais là dans l'immédiat on a le fait 
+			que merge_i+1 attend path_i+1 et merge_i, ce qui n'est pas du tout nécessaire, d'où le fait qu'on doit faire
+			un kernel qui lance les deux autres, pour avoir la seule synchro nécessaire
+			*/
+			testCUDA(cudaDeviceSynchronize());
+			mergeBig_k<<<1,mergeSize>>>(M_dev_copy+k*mergeSize, mergeSize/2, M_dev_copy+(2*k+1)*(mergeSize/2), mergeSize/2, M_dev+k*mergeSize, mergeSize*k);
         }
 		testCUDA(cudaDeviceSynchronize());
         mergeSize *= 2;
