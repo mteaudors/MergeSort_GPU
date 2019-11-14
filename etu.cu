@@ -18,17 +18,24 @@ __global__ void thom_sym_k(float *S, float *D, float *Y, int n){
 	int idx = threadIdx.x + blockIdx.x*blockDim.x;
 	int j;
 
-	float d = D[idx*n];
-	Cp[idx*n + 1] = S[idx*n + 1] / d; 
-	Y[idx*n] = S[idx*n + 1] / d;
 
-	for (j=1;j<n;j++) { //Decomposition and forward substitution.
-		Cp[idx*n + j + 1] = S[idx*n + j + 1] / (D[idx*n + j] - S[idx*n + j + 1]*Cp[idx*n + j]);
-		Y[idx*n + j] = (Y[idx*n + j] - S[idx*n + j + 1]*Y[idx*n + j - 1]) / (D[idx*n + j] - S[idx*n + j + 1]*Cp[idx*n + j]);
+	int first = idx*n;
+	int first_c = idx*n + 1;
+
+	float d = D[first];
+	Cp[first_c] = S[first_c] / d; 
+	Y[first] = Y[first] / d;
+
+	for (j=1;j<n-1;j++) { //Decomposition and forward substitution.
+		Cp[first_c + j] = S[first_c + j] / (D[first + j] - S[first_c + j - 1]*Cp[first_c + j - 1]);	
+		Y[first + j] = (Y[first + j] - S[first_c + j - 1]*Y[first + j - 1]) / (D[first + j] - S[first_c + j - 1]*Cp[first_c + j - 1]);
 	}
 
+	// One more iteration for Y (j=n-1)
+	Y[first + n - 1] = (Y[first + n - 1] - S[first_c + n - 2]*Y[first + n - 2]) / (D[first + n - 1] - S[first_c + n - 2]*Cp[first_c + n - 2]);
+
 	for (j=(n-2);j>=0;j--){ //Backsubstitution.
-		Y[idx*n + j] = Y[idx*n + j] - Cp[idx*n + j + 1]*Y[idx*n + j + 1];
+		Y[first + j] = Y[first + j] - Cp[first_c + j]*Y[first + j + 1];
 	}
 }
 
