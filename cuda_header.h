@@ -9,8 +9,8 @@
 #include <string>
 #include <ctime>
 
-#define SIZE_A 1024
-#define SIZE_B 1024
+#define SIZE_A 16
+#define SIZE_B 16
 #define SIZE_M (SIZE_A + SIZE_B)
 #define D 128
 
@@ -60,7 +60,7 @@ int* generate_unsorted_array(int length) {
 }
 
 void print_array(int *arr, int length, std::string name) {
-	printf("\n############### %s ###############\n\n",name.c_str());
+	printf("\n\t\t############### %s ###############\n\n",name.c_str());
 	for (int i = 0; i < length ; ++i) {
 		printf("%s[%d] = %d", name.c_str(), i, *(arr + i));
 		
