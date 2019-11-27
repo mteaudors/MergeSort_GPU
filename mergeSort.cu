@@ -6,7 +6,7 @@ __device__ int B_diag[D];
 
 /**
 	Find the intersection between one diagonal and the merge path.
-	ça sert à r de mettre + de thread que d'diag.
+	ï¿½a sert ï¿½ r de mettre + de thread que d'diag.
 */
 __global__ void pathBig_k(int *A, int length_A, int *B, int length_B, int start_diag) {
 		int nb_threads = gridDim.x * blockDim.x;
@@ -64,12 +64,6 @@ __global__ void mergeBig_k(int *A, int length_A, int *B, int length_B, int* M, i
 		}
 	}
 }
-
-/*
-tidx = indice du thread dans son groupe de tableaux à trier, genre 32 tableaux de 32 cases à trier dans un block
-Qt = indice du groupe de travail du thread actuel
-gbx = indice du thread pour accéder à la mémoire globale, indice d'un groupe de thread dans l'ensemble des threads pour pouvoir accéder à la RAM
-*/
 
 
 void mergeSortGPU (int *M , int length, float *timer) {
