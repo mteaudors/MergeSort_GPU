@@ -12,8 +12,8 @@
 #define SIZE_A 16
 #define SIZE_B 16
 #define SIZE_M (SIZE_A + SIZE_B)
-#define D (65536*4)
-//#define D (1025)
+//#define D (65536*4)
+#define D (1000000)
 
 #define LENGTH_A (SIZE_A * sizeof(int))
 #define LENGTH_B (SIZE_B * sizeof(int))

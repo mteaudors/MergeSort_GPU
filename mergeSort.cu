@@ -10,46 +10,50 @@ __device__ int B_diag[D];
 __global__ void pathBig_k(int *A, int length_A, int *B, int length_B, int start_diag) {
 	int nb_threads = gridDim.x * blockDim.x;
 	int tidx = threadIdx.x + blockIdx.x*blockDim.x;
-
-	
 	int length = (length_A+length_B)/nb_threads;
-	int index_diag = start_diag + tidx*length;
-
-       	duo K, P, Q;
-	for(int k=0 ; k<length; ++k) {
-		int i = tidx*length+k;
-	       	if (i > length_A) {
-       	        	K.x = i - length_A;
-                	K.y = length_A;
-     		      	P.x = length_A;
-               		P.y = i - length_A;
-       		}else {
-               		K.x = 0;
-			K.y = i;
-			P.x = i;
-			P.y = 0;
-		}
 	
-		while (true) {
-			int offset = abs(K.y - P.y) / 2;
-			Q.x = K.x + offset;
-			Q.y = K.y - offset;
-			if (Q.y >= 0 && Q.x <= length_B && (Q.y == length_A || Q.x == 0 || A[Q.y] > B[Q.x - 1])) {
-				if (Q.x == length_B || Q.y == 0 || A[Q.y - 1] <= B[Q.x]) {
-					A_diag[index_diag+k] = Q.y;
-					B_diag[index_diag+k] = Q.x;
-					break;
+
+	duo K, P, Q;
+
+	while(tidx<(length_A+length_B)) {
+		int index_diag = start_diag + tidx*length;
+
+		for(int k=0 ; k<length; ++k) {
+			int i = tidx*length+k;
+				if (i > length_A) {
+						K.x = i - length_A;
+						K.y = length_A;
+						P.x = length_A;
+						P.y = i - length_A;
+				}else {
+						K.x = 0;
+				K.y = i;
+				P.x = i;
+				P.y = 0;
+			}
+		
+			while (true) {
+				int offset = abs(K.y - P.y) / 2;
+				Q.x = K.x + offset;
+				Q.y = K.y - offset;
+				if (Q.y >= 0 && Q.x <= length_B && (Q.y == length_A || Q.x == 0 || A[Q.y] > B[Q.x - 1])) {
+					if (Q.x == length_B || Q.y == 0 || A[Q.y - 1] <= B[Q.x]) {
+						A_diag[index_diag+k] = Q.y;
+						B_diag[index_diag+k] = Q.x;
+						break;
+					}
+					else {
+						K.x = Q.x + 1;
+						K.y = Q.y - 1;
+					}
 				}
 				else {
-					K.x = Q.x + 1;
-					K.y = Q.y - 1;
+					P.x = Q.x - 1;
+					P.y = Q.y + 1;
 				}
 			}
-			else {
-				P.x = Q.x - 1;
-				P.y = Q.y + 1;
-			}
 		}
+		tidx += nb_threads;
 	}
 	
 }
@@ -59,16 +63,21 @@ __global__ void mergeBig_k(int *A, int length_A, int *B, int length_B, int* M, i
 
 	int nb_threads = gridDim.x * blockDim.x;
 	int length = (length_A + length_B) / nb_threads;
-	int start_M = start_diag + tidx*length;
+	
+	while(tidx<(length_A+length_B)) {
+		int start_M = start_diag + tidx*length;
 
-	for(int k=0 ; k<length ; ++k) {
-       		int i = start_M + k;
-		if (A_diag[i] < length_A && (B_diag[i] == length_B || A[A_diag[i]] <= B[B_diag[i]])) {
-			M[i] = A[A_diag[i]];
-		} else {
-			M[i] = B[B_diag[i]];
+		for(int k=0 ; k<length ; ++k) {
+				int i = start_M + k;
+			if (A_diag[i] < length_A && (B_diag[i] == length_B || A[A_diag[i]] <= B[B_diag[i]])) {
+				M[i] = A[A_diag[i]];
+			} else {
+				M[i] = B[B_diag[i]];
+			}
 		}
+		tidx += nb_threads;
 	}
+	
 	
 }
 
@@ -107,12 +116,12 @@ void mergeSortGPU (int *M , int length, float *timer) {
 			int mergeSizeLast = length%mergeSize;
 			int block_size_last = (mergeSizeLast > 1024) ? 1024 : mergeSizeLast;
 			int nb_block_last = (mergeSizeLast + block_size_last - 1)/block_size_last;
-			printf("MergeSize : %d\tMergeSizeLast %d\n",mergeSize,mergeSizeLast);
+			//printf("MergeSize : %d\tMergeSizeLast %d\n",mergeSize,mergeSizeLast);
 			
 			while(nb_block_last*block_size_last > mergeSizeLast) block_size_last /= 2;
 			
-			printf("Launch %d blocks of %d threads\n",nb_block_last,block_size_last);
-		       	if(mergeSizeLast > mergeSize/2) 
+			//printf("Launch %d blocks of %d threads\n",nb_block_last,block_size_last);
+		 	if(mergeSizeLast > mergeSize/2) 
 				pathBig_k << <nb_block_last, block_size_last >> > (M_dev + k * mergeSize, mergeSize / 2,M_dev + k * mergeSize + mergeSize/2, mergeSizeLast - (mergeSize/2), mergeSize*k);
 		}
 	}
