@@ -2,7 +2,12 @@
 #include <algorithm>
 #include <vector>
 
-#define NB_POINTS 16
+#define NB_POINTS 21
+#define NB_RUN 5
+
+#define INF(A, B) (A.x < B.x || (A.x == B.x && A.y <= B.y))
+#define EQ(A, B) (A.x == B.x && A.y == B.y)
+#define INFEQ(A, B) (INF(A, B) || EQ(A, B))
 
 __device__ int A_diag[NB_POINTS];
 __device__ int B_diag[NB_POINTS];
@@ -97,10 +102,10 @@ __global__ void pathBig_k(Point *A, int length_A, Point *B, int length_B, int st
 		int offset = abs(K.y - P.y) / 2;
 		Q.x = K.x + offset;
 		Q.y = K.y - offset;
-		//faire gaffe ici
-		if (Q.y >= 0 && Q.x <= length_B && (Q.y == length_A || Q.x == 0 || (B[Q.x - 1].x < A[Q.y].x || (B[Q.x - 1].x == A[Q.y].x && B[Q.x - 1].y < A[Q.y].y)))) {
-			//ici aussi
-			if (Q.x == length_B || Q.y == 0 || (A[Q.y - 1].x < B[Q.x].x || (A[Q.y - 1].x == B[Q.x].x && A[Q.y - 1].y < B[Q.x].y))) {
+		//if (Q.y >= 0 && Q.x <= length_B && (Q.y == length_A || Q.x == 0 || A[Q.y] > B[Q.x - 1])) {
+		if (Q.y >= 0 && Q.x <= length_B && (Q.y == length_A || Q.x == 0 || INF(B[Q.x - 1], A[Q.y]))) {
+			//if (Q.x == length_B || Q.y == 0 || A[Q.y - 1] <= B[Q.x]) {
+			if (Q.x == length_B || Q.y == 0 || INFEQ(A[Q.y - 1], B[Q.x])) {
 				A_diag[index_diag] = Q.y;
 				B_diag[index_diag] = Q.x;
 				break;
@@ -122,11 +127,11 @@ __global__ void mergeBig_k(Point *A, int length_A, Point *B, int length_B, Point
 	int nb_threads = gridDim.x * blockDim.x;
 	int length = (length_A + length_B) / nb_threads;
 	int start_M = i * (length_A + length_B) / nb_threads;
-
+	
 	for (int k = 0; k < length; ++k) {
 		int i = start_diag + start_M + k;
-		//et ici
-		if (A_diag[i] < length_A && (B_diag[i] == length_B || (A[A_diag[i]].x < B[B_diag[i]].x || (A[A_diag[i]].x == B[B_diag[i]].x && A[A_diag[i]].y < B[B_diag[i]].y)))) {
+		//if (A_diag[i] < length_A && (B_diag[i] == length_B || A[A_diag[i]] <= B[B_diag[i]])) {
+		if (A_diag[i] < length_A && (B_diag[i] == length_B || INFEQ(A[A_diag[i]], B[B_diag[i]]))) {
 			M[start_M + k] = A[A_diag[i]];
 		}
 		else {
@@ -182,20 +187,23 @@ void mergeSortGPU(Point *M, int length) {
 Point* convex_hull(Point* P, int n, int *h_length)
 {
 	int k = 0;
-	Point* H = (Point*) malloc(n * sizeof(Point));
 
 	// Sort points lexicographically
 	mergeSortGPU(P, n);
 
+	Point* H = (Point*)malloc(n * sizeof(Point));
+
 	// Build lower hull
 	for (int i = 0; i < n; ++i) {
-		while (k >= 2 && cross(H[k - 2], H[k - 1], P[i]) <= 0) k--;
+		while (k >= 2 && cross(H[k - 2], H[k - 1], P[i]) <= 0)
+			k--;
 		H[k++] = P[i];
 	}
 
 	// Build upper hull
 	for (int i = n - 1, t = k + 1; i > 0; --i) {
-		while (k >= t && cross(H[k - 2], H[k - 1], P[i - 1]) <= 0) k--;
+		while (k >= t && cross(H[k - 2], H[k - 1], P[i - 1]) <= 0)
+			k--;
 		H[k++] = P[i - 1];
 	}
 	*h_length = k;
@@ -208,8 +216,7 @@ int main(int argc, char *argv[]) {
 	// initialize random seed
 	srand(time(0));
 
-	for (int i = 0; i < 16; ++i) {
-		testCUDA(cudaDeviceReset());
+	for (int i = 0; i < NB_RUN; ++i) {
 		int h_length = 0;
 
 
