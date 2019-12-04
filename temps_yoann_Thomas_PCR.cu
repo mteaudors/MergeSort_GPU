@@ -1,0 +1,23 @@
+/*
+To solve 2097152 matrixes of size 2, using the PCR algorithm, the time taken was : 12.081664 ms
+To solve 1048576 matrixes of size 4, using the PCR algorithm, the time taken was : 15.550240 ms
+To solve 524288 matrixes of size 8, using the PCR algorithm, the time taken was : 18.315744 ms
+To solve 262144 matrixes of size 16, using the PCR algorithm, the time taken was : 22.201504 ms
+To solve 131072 matrixes of size 32, using the PCR algorithm, the time taken was : 25.856833 ms
+To solve 65536 matrixes of size 64, using the PCR algorithm, the time taken was : 24.546623 ms
+To solve 32768 matrixes of size 128, using the PCR algorithm, the time taken was : 27.076736 ms
+To solve 16384 matrixes of size 256, using the PCR algorithm, the time taken was : 28.170143 ms
+To solve 8192 matrixes of size 512, using the PCR algorithm, the time taken was : 30.936960 ms
+To solve 4096 matrixes of size 1024, using the PCR algorithm, the time taken was : 33.933281 ms
+
+To solve 2097152 matrixes of size 2, using the Thomas algorithm, the time taken was : 3.804032 ms
+To solve 1048576 matrixes of size 4, using the Thomas algorithm, the time taken was : 6.424288 ms
+To solve 524288 matrixes of size 8, using the Thomas algorithm, the time taken was : 13.405312 ms
+To solve 262144 matrixes of size 16, using the Thomas algorithm, the time taken was : 17.203615 ms
+To solve 131072 matrixes of size 32, using the Thomas algorithm, the time taken was : 57.491871 ms
+To solve 65536 matrixes of size 64, using the Thomas algorithm, the time taken was : 67.187645 ms
+To solve 32768 matrixes of size 128, using the Thomas algorithm, the time taken was : 66.201218 ms
+To solve 16384 matrixes of size 256, using the Thomas algorithm, the time taken was : 91.869728 ms
+To solve 8192 matrixes of size 512, using the Thomas algorithm, the time taken was : 132.001022 ms
+To solve 4096 matrixes of size 1024, using the Thomas algorithm, the time taken was : 141.114075 ms
+*/

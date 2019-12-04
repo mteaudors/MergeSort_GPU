@@ -54,9 +54,12 @@ int main(int argc, char *argv[]) {
     // initialize random seed
     srand(time(0));
     testCUDA(cudaDeviceReset());
-    
-    // number of couples of arrays to merge
-    int N = 4;                        
+	cudaEvent_t start, stop;
+
+	testCUDA(cudaEventCreate(&start));
+	testCUDA(cudaEventCreate(&stop));
+
+	float timer;
 
     /*  Number of threads per block.
         We want to launch N*SIZE_M threads to bind each thread with one element in the final array.
@@ -70,7 +73,7 @@ int main(int argc, char *argv[]) {
     // number of blocks 
     int blk = (N*SIZE_M + tpb - 1)/tpb;                         
 
-    printf("\n------------------------------------------------------------------------------------------------------------------------------\n\n");
+    printf("------------------------------------------------------------------------------------------------------------------------------\n\n");
     printf("N : %d\n",N);
     printf("Size of A : %d\tSize of B : %d\tSize of M : %d\n",SIZE_A,SIZE_B,SIZE_M);
     printf("Minimum number of threads to launch : %d\n",N*SIZE_M);
@@ -96,21 +99,28 @@ int main(int argc, char *argv[]) {
 	testCUDA(cudaMemcpy(dev_a, A, N*SIZE_A*sizeof(int), cudaMemcpyHostToDevice));
 	testCUDA(cudaMemcpy(dev_b, B, N*SIZE_B*sizeof(int), cudaMemcpyHostToDevice));
 
+	testCUDA(cudaEventRecord(start, 0));
+
     // Launch merge kernel on GPU
 	mergeSmallBatch_k << <blk, tpb >> > (dev_a, SIZE_A, dev_b, SIZE_B, dev_m);
 
 	// Wait until work is done
 	cudaDeviceSynchronize();
 
+	testCUDA(cudaEventRecord(stop, 0));
+	testCUDA(cudaEventSynchronize(stop));
+	testCUDA(cudaEventElapsedTime(&timer, start, stop));
+
 	// Copy result from GPU RAM into CPU RAM
 	testCUDA(cudaMemcpy(M, dev_m, N*SIZE_M*sizeof(int), cudaMemcpyDeviceToHost));
 
-    for(int k=0 ; k<N ; ++k) {
+    /*for(int k=0 ; k<N ; ++k) {
         print_array(&A[k*SIZE_A], SIZE_A, "A");
         print_array(&B[k*SIZE_B], SIZE_B, "B");
         print_array(&M[k*SIZE_M], SIZE_M, "M");
         printf("\n------------------------------------------------------------------------------------------------------------------------------\n");
-    }
+    }*/
+	printf("Time taken to sort %ld arrays of combined length %ld = %f ms\n", N, SIZE_M, timer);
 	
 
 	// Free both CPU and GPU memory allocated

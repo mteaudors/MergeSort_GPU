@@ -146,92 +146,108 @@ int main() {
 
 	int i, j;
 
-	// The rank of the matrix
-	int Dim = 256;
+	// Dim is the rank of the matrix
 
-	// The number of blocks
-	int NB = M / Dim;
+	for (int Dim = 2; Dim <= 1024; Dim *= 2) {
 
-	// The number of matrices to invert
-	int size = NB;
+		// The number of blocks
+		int NB = M / Dim;
 
-	int minTB = 1024/Dim;
+		// The number of matrices to invert
+		int size = NB;
 
-	// The diagonal elements
-	float *diag, *diagGPU;
-	// The subdiagonal elements
-	float *sub, *subGPU;
-	// The system vector
-	float *Y, *YGPU;
-	float *X, *XGPU;
+		int minTB = 1024 / Dim;
 
-	float TimerV;					// GPU timer instructions
-	cudaEvent_t start, stop;		// GPU timer instructions
-	cudaEventCreate(&start);		// GPU timer instructions
-	cudaEventCreate(&stop);			// GPU timer instructions
+		// The diagonal elements
+		float *diag, *diagGPU;
+		// The subdiagonal elements
+		float *sub, *subGPU;
+		// The system vector
+		float *Y, *YGPU;
+		float *X, *XGPU;
 
-	// Memory allocation
-	diag = (float *)calloc(size*Dim, sizeof(float));
-	sub = (float *)calloc(size*Dim, sizeof(float));
-	cudaMalloc(&diagGPU, size*Dim * sizeof(float));
-	cudaMalloc(&subGPU, size*Dim * sizeof(float));
+		float TimerV;					// GPU timer instructions
+		cudaEvent_t start, stop;		// GPU timer instructions
+		cudaEventCreate(&start);		// GPU timer instructions
+		cudaEventCreate(&stop);			// GPU timer instructions
 
-	X = (float *)calloc(size*Dim, sizeof(float));
-	Y = (float *)calloc(size*Dim, sizeof(float));
-	cudaMalloc(&XGPU, size*Dim * sizeof(float));
-	cudaMalloc(&YGPU, size*Dim * sizeof(float));
+		// Memory allocation
+		diag = (float *)calloc(size*Dim, sizeof(float));
+		sub = (float *)calloc(size*Dim, sizeof(float));
+		cudaMalloc(&diagGPU, size*Dim * sizeof(float));
+		cudaMalloc(&subGPU, size*Dim * sizeof(float));
 
-	//Result vector
-	for (i = 0; i < size; i++) {
-		for (j = 0; j < Dim; j++) {
-			Y[j + i * Dim] = 0.5f*j;
-		}
-	}
-	cudaMemcpy(YGPU, Y, size*Dim * sizeof(float), cudaMemcpyHostToDevice);
+		X = (float *)calloc(size*Dim, sizeof(float));
+		Y = (float *)calloc(size*Dim, sizeof(float));
+		cudaMalloc(&XGPU, size*Dim * sizeof(float));
+		cudaMalloc(&YGPU, size*Dim * sizeof(float));
 
-	// Tridiagonal elements
-	for (i = 0; i*Dim*NB < M; i++) {
-		Tri_k << <NB, Dim >> > (subGPU, diagGPU, 10.0f, i*Dim*NB, Dim, Dim*NB);
-	}
-
-	// Resolution part
-	cudaEventRecord(start, 0);
-
-
-	thom_sym_k << <NB / 256, 256 >> > (subGPU, diagGPU, YGPU, Dim);
-	//pcr_sym_k << <NB / minTB, Dim*minTB, 5 * minTB*Dim * sizeof(float) >> > (subGPU, diagGPU, YGPU, XGPU, Dim);
-
-
-	cudaEventRecord(stop, 0);
-	cudaEventSynchronize(stop);
-	cudaEventElapsedTime(&TimerV, start, stop);
-
-	cudaMemcpy(X, YGPU, size*Dim * sizeof(float), cudaMemcpyDeviceToHost);
-	//cudaMemcpy(X, XGPU, size*Dim * sizeof(float), cudaMemcpyDeviceToHost);
-
-	for (i = 0; i < size; i++) {
-		if (i == 573) {
+		//Result vector
+		for (i = 0; i < size; i++) {
 			for (j = 0; j < Dim; j++) {
-				printf("%.5e, ", X[j + i * Dim]);
+				Y[j + i * Dim] = 0.5f*j;
 			}
 		}
+		cudaMemcpy(YGPU, Y, size*Dim * sizeof(float), cudaMemcpyHostToDevice);
+
+		// Tridiagonal elements
+		for (i = 0; i*Dim*NB < M; i++) {
+			Tri_k << <NB, Dim >> > (subGPU, diagGPU, 10.0f, i*Dim*NB, Dim, Dim*NB);
+		}
+
+		// Resolution part
+		cudaEventRecord(start, 0);
+
+		/*
+		Pour tester l'algorithme de Thomas, il faut décommenter les deux lignes :
+		thom_sym_k << <NB / 256, 256 >> > (subGPU, diagGPU, YGPU, Dim);
+		cudaMemcpy(X, YGPU, size*Dim * sizeof(float), cudaMemcpyDeviceToHost);
+		printf("To solve %ld matrixes of size %ld, using the Thomas algorithm, the time taken was : %f ms\n", size, Dim, TimerV);
+
+		commenter les lignes :
+		pcr_sym_k << <NB / minTB, Dim*minTB, 5 * minTB*Dim * sizeof(float) >> > (subGPU, diagGPU, YGPU, XGPU, Dim);
+		cudaMemcpy(X, XGPU, size*Dim * sizeof(float), cudaMemcpyDeviceToHost);
+		printf("To solve %ld matrixes of size %ld, using the PCR algorithm, the time taken was : %f ms\n", size, Dim, TimerV);
+
+		et
+		Pour tester PCR, il suffit de faire l'inverse.
+		*/
+
+		thom_sym_k << <NB / 256, 256 >> > (subGPU, diagGPU, YGPU, Dim);
+		//pcr_sym_k << <NB / minTB, Dim*minTB, 5 * minTB*Dim * sizeof(float) >> > (subGPU, diagGPU, YGPU, XGPU, Dim);
+
+
+		cudaEventRecord(stop, 0);
+		cudaEventSynchronize(stop);
+		cudaEventElapsedTime(&TimerV, start, stop);
+
+		cudaMemcpy(X, YGPU, size*Dim * sizeof(float), cudaMemcpyDeviceToHost);
+		//cudaMemcpy(X, XGPU, size*Dim * sizeof(float), cudaMemcpyDeviceToHost);
+
+		/*for (i = 0; i < size; i++) {
+			if (i == 573) {
+				for (j = 0; j < Dim; j++) {
+					printf("%.5e, ", X[j + i * Dim]);
+				}
+			}
+		}*/
+
+		printf("To solve %ld matrixes of size %ld, using the Thomas algorithm, the time taken was : %f ms\n", size, Dim, TimerV);
+		//printf("To solve %ld matrixes of size %ld, using the PCR algorithm, the time taken was : %f ms\n", size, Dim, TimerV);
+
+
+		// Memory free for other arrays
+		free(diag);
+		cudaFree(diagGPU);
+		free(sub);
+		cudaFree(subGPU);
+		free(X);
+		cudaFree(XGPU);
+		free(Y);
+		cudaFree(YGPU);
+
+		cudaEventDestroy(start);		// GPU timer instructions
+		cudaEventDestroy(stop);			// GPU timer instructions
 	}
-
-	printf("Execution time: %f ms\n", TimerV);
-
-
-	// Memory free for other arrays
-	free(diag);
-	cudaFree(diagGPU);
-	free(sub);
-	cudaFree(subGPU);
-	free(X);
-	cudaFree(XGPU);
-	free(Y);
-	cudaFree(YGPU);
-
-	cudaEventDestroy(start);		// GPU timer instructions
-	cudaEventDestroy(stop);			// GPU timer instructions
-
 	return 0;
 }

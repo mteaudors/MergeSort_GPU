@@ -9,17 +9,18 @@
 #include <string>
 #include <ctime>
 
-#define SIZE_A 16
-#define SIZE_B 16
+#define SIZE_A 2*2*2*2*2*2*2*2*2
+#define SIZE_B 2*2*2*2*2*2*2*2*2
 #define SIZE_M (SIZE_A + SIZE_B)
-#define D 2699223 
+#define N 1024
+
+#define D 2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2
 #define BATCH_THRESHOLD 1024
 
 #define LENGTH_A (SIZE_A * sizeof(int))
 #define LENGTH_B (SIZE_B * sizeof(int))
 #define LENGTH_M (SIZE_M * sizeof(int))
 
-#define ARRAY_NUMBER 64
 #define ARRAY_SIZES 64
 #define TWO_ARRAY_SIZE (ARRAY_SIZES * 2)
 #define TOTAL_SIZE (ARRAY_NUMBER * ARRAY_SIZES)
