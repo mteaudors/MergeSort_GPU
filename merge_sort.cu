@@ -1,10 +1,16 @@
 
 #include "cuda_header.h"
 
+/*
+	Memory allocation on GPU RAM to store the path
+*/
 __device__ int A_diag[D];
 __device__ int B_diag[D];
 
 
+/*
+	GPU kernel to merge two array A and B, such that length(A)+length(B) <= 1024
+*/
 __global__ void mergeSmall_k(int *A, int length_A, int *B, int length_B, int *M) {
 	int i = threadIdx.x + blockIdx.x * blockDim.x;
 	duo K, P, Q;
@@ -45,6 +51,9 @@ __global__ void mergeSmall_k(int *A, int length_A, int *B, int length_B, int *M)
 }
 
 
+/*
+	GPU kernel to merge, using a batch method, multiple couples of array (a,b).
+*/
 __global__ void mergeSmallBatch_k(int *AB, int length_A, int length_B, int *M, int nb_merge) {
 	int nb_threads = gridDim.x * blockDim.x,
 		gtidx = threadIdx.x + blockIdx.x * blockDim.x,
@@ -103,7 +112,9 @@ __global__ void mergeSmallBatch_k(int *AB, int length_A, int length_B, int *M, i
 }
 
 /**
-	Find the intersection between one diagonal and the merge path.
+	Find the intersection between one (or more) diagonal and the merge path.
+	The path is written in GPU RAM, in A_diag and B_diag.
+	(A_diag[i],B_diag[i]) represents the i-th point of the path.
 */
 __global__ void pathBig_k(int *A, int length_A, int *B, int length_B, int start_diag) {
 	int nb_threads = gridDim.x * blockDim.x;
@@ -156,6 +167,10 @@ __global__ void pathBig_k(int *A, int length_A, int *B, int length_B, int start_
 	
 }
 
+/*
+	To be launched after pathBig_k to effectively merge the arrays.
+	Using the computed path stored in GPU RAM, write the result of the merge in the final array.
+*/
 __global__ void mergeBig_k(int *A, int length_A, int *B, int length_B, int* M, int start_diag) {
 	int tidx = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -177,75 +192,133 @@ __global__ void mergeBig_k(int *A, int length_A, int *B, int length_B, int* M, i
 	}
 }
 
-
+/*
+	General function to sort an arbitrary huge array using GPU. 
+	Below a predefined threshold, the batch merge technique is used to avoid an excessive amount of kernel launches.
+*/
 void mergeSortGPU (int *M , int length, float *timer) {
-    float timer_iter;
-    int *M_dev, *M_dev_copy;
-    int merge_size = 2;
-    cudaEvent_t start, stop, start_iter, stop_iter;
 
+	// timer to measure the executime of each iteration of the sort
+	float timer_iter;
+	
+	// GPU pointer of the array to sort.
+	// A copy is necessary since the array represents both input and output. Therefore concurency access is problematic in a parallel context.
+	int *M_dev, *M_dev_copy;
+	
+	// The size of the sorted array at each iteration. 
+	// At the first iteration, we merge several arrays of 1 element to get sorted arrays of two elements.
+	int merge_size = 2;
+	
+	// cuda time events
+    cudaEvent_t start, stop, start_iter, stop_iter;
     testCUDA(cudaEventCreate(&start));
     testCUDA(cudaEventCreate(&stop));
     testCUDA(cudaEventCreate(&start_iter));
     testCUDA(cudaEventCreate(&stop_iter));
 
+	// GPU memory allocation and copy of the array from CPU to GPU
     testCUDA(cudaMalloc((void**)&M_dev , D*sizeof(int)));
     testCUDA(cudaMalloc((void**)&M_dev_copy , D*sizeof(int)));
     testCUDA(cudaMemcpy(M_dev, M,D*sizeof(int), cudaMemcpyHostToDevice));
 
+	// start global time recording
     testCUDA(cudaEventRecord(start, 0));
-    
-    while(merge_size <= pow(2,ceil(log2(length)))) {
 	
+	// Main loop 
+    while(merge_size <= pow(2,ceil(log2(length)))) {
+		
+		// start iteration time recording
     	testCUDA(cudaEventRecord(start_iter,0));
 
+		// update the copy of M to take into account modifications of the previous iteration
 		testCUDA(cudaMemcpy(M_dev_copy, M_dev, D * sizeof(int), cudaMemcpyDeviceToDevice));
-	
+		
 		if(merge_size <= BATCH_THRESHOLD) {
+			// Small size => batch method
+
+			// dynamically compute the number of threads per block and the corresponding number of blocks
 			int block_size =  min(length, ((int)(1024/merge_size))*merge_size);
 			int nb_block = (length + block_size - 1)/block_size;
-			mergeSmallBatch_k<<<nb_block,block_size>>>(M_dev_copy, merge_size/2, merge_size/2, M_dev, length/merge_size);
 
+			// launch the kernel to sort in batch all the array
+			mergeSmallBatch_k<<<nb_block,block_size>>>(M_dev_copy, merge_size/2, merge_size/2, M_dev, length/merge_size);
+			
+			// Annoying case where the the final sub-array to merge is smaller
+			// Need to be treated separately
 			if(length%merge_size) {
+				
+				// size of the final sub-array
 				int merge_size_last = length%merge_size;
+
+				// dynamically compute the number of threads per block and the corresponding number of blocks
 				int block_size_last = (merge_size_last > 1024) ? 1024 : merge_size_last;
 				int nb_block_last = (merge_size_last + block_size_last - 1)/block_size_last;
 				
+				// Useful to launch only if the size is greater than the size of the previous iteration
+				// Arrays of size merge_size/2 have sorted during the prevous iteration
 				if(merge_size_last > merge_size/2) 
 					mergeSmall_k<<<nb_block_last,block_size_last>>>(M_dev_copy + ((int)(length/merge_size))*merge_size, merge_size/2, M_dev_copy + ((int)(length/merge_size))*merge_size + (merge_size/2), merge_size_last-(merge_size/2), M_dev + ((int)(length/merge_size))*merge_size);
 			}
 		}
 		else {
+
+			// Number of separate merge to launch
 			int iter = (length+merge_size-1)/merge_size;
+
+			// dynamically compute the number of threads per block and the corresponding number of blocks
 			int block_size = (merge_size > 1024) ? 1024 : merge_size;
 			int nb_block = (merge_size+block_size-1)/block_size;
 			
+			// first loop to compute the path
 			for (int k = 0; k < iter; ++k) {
 				if(k<(length/merge_size))
 					pathBig_k << <nb_block,block_size>> > (M_dev + k * merge_size, merge_size / 2, M_dev + (2 * k + 1)*(merge_size / 2), merge_size / 2, merge_size*k);
 				else {
+					
+					// final sub-array with different size 
+					// this case appears only when length%merge_size != 0
+					
+					// size of the final sub-array
 					int merge_size_last = length%merge_size;
+
+					// dynamically compute the number of threads per block and the corresponding number of blocks
 					int block_size_last = (merge_size_last > 1024) ? 1024 : merge_size_last;
 					int nb_block_last = (merge_size_last + block_size_last - 1)/block_size_last;
 					
+					// reduce the size of the block to avoid launching more threads than the size of the final array
 					while(nb_block_last*block_size_last > merge_size_last) block_size_last /= 2;
 					
+					// Useful to launch only if the size is greater than the size of the previous iteration
+					// Arrays of size merge_size/2 have sorted during the prevous iteration
 					if(merge_size_last > merge_size/2) 
 						pathBig_k << <nb_block_last, block_size_last >> > (M_dev + k * merge_size, merge_size / 2,M_dev + k * merge_size + merge_size/2, merge_size_last - (merge_size/2), merge_size*k);
 				}
 			}
+
+			// wait for all the kernels to finish to compute the path
 			testCUDA(cudaDeviceSynchronize());
-				
+			
+			// second loop for the merge
 			for(int k=0 ; k<iter ; ++k) {
 				if(k<(length/merge_size))
 					mergeBig_k<<<nb_block,block_size>>>(M_dev_copy+k*merge_size, merge_size/2, M_dev_copy+(2*k+1)*(merge_size/2), merge_size/2, M_dev, merge_size*k);
 				else {
+
+					// final sub-array with different size 
+					// this case appears only when length%merge_size != 0
+					
+					// size of the final sub-array
 					int merge_size_last = length%merge_size;
+
+					// dynamically compute the number of threads per block and the corresponding number of blocks
 					int block_size_last = (merge_size_last > 1024) ? 1024 : merge_size_last;
 					int nb_block_last = (merge_size_last + block_size_last - 1)/block_size_last;
-					
+
+					// reduce the size of the block to avoid launching more threads than the size of the final array
 					while(nb_block_last*block_size_last > merge_size_last) block_size_last /= 2;
-		
+					
+					// Useful to launch only if the size is greater than the size of the previous iteration
+					// Arrays of size merge_size/2 have sorted during the prevous iteration
 					if(merge_size_last > merge_size/2)
 						mergeBig_k << <nb_block_last, block_size_last >> > (M_dev_copy + k * merge_size, merge_size / 2,M_dev_copy + k * merge_size + merge_size/2, merge_size_last - (merge_size/2),  M_dev, merge_size*k);
 				
@@ -254,23 +327,30 @@ void mergeSortGPU (int *M , int length, float *timer) {
 			}
 		}
 
+		// stop iteration time recording and print
 		testCUDA(cudaDeviceSynchronize());
 		testCUDA(cudaEventRecord(stop_iter,0));
 		testCUDA(cudaEventSynchronize(stop_iter));
 		testCUDA(cudaEventElapsedTime(&timer_iter,start_iter, stop_iter));
 		printf("MergeSize = %7d\t\tDuration : %f ms\n",merge_size,timer_iter);
+		
+		// double the size of the sub-arrays to merge for the next iteration
 		merge_size *= 2;
-
 	}
 
+	// stop global time recording
     testCUDA(cudaEventRecord(stop, 0));
     testCUDA(cudaEventSynchronize(stop));
     testCUDA(cudaEventElapsedTime(timer, start, stop));
-    
-    testCUDA(cudaMemcpy(M, M_dev,D*sizeof(int), cudaMemcpyDeviceToHost));
+	
+	// copy the result back to the CPU RAM
+	testCUDA(cudaMemcpy(M, M_dev,D*sizeof(int), cudaMemcpyDeviceToHost));
+	
+	// Free GPU memory
     testCUDA(cudaFree(M_dev));
     testCUDA(cudaFree(M_dev_copy));
 
+	// destroy time events
     testCUDA(cudaEventDestroy(start));
     testCUDA(cudaEventDestroy(stop));
     testCUDA(cudaEventDestroy(start_iter));
@@ -280,17 +360,23 @@ void mergeSortGPU (int *M , int length, float *timer) {
 
 int main(int argc , char *argv[]) {
     // initialize random seed
-    srand(time(0));
+	srand(time(0));
+	
+	// general timer
     float TimerAdd = 0;
 
     printf("Size of array : %d\n",D);
 
+	// Random generation of the array to sort
     int* M = generate_unsorted_array(D);
-    //print_unsorted_array(M , D , "M");
 
+	// Sort
     mergeSortGPU(M,D, &TimerAdd);
 
-    check_array_sorted(M,D,"M");
+	// Check the array is well sorted
+	check_array_sorted(M,D,"M");
+	
+	// print general duration of the sort
     printf("===== Total time : %f ms =====\n", TimerAdd);
     free(M);
 }
