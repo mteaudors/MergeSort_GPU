@@ -18,4 +18,4 @@ merge_path_sort_parallel_small:
 	
 
 exec:
-	.\mergeSort.exe
+	.\merge_sort.exe

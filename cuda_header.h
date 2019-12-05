@@ -14,7 +14,7 @@
 #define SIZE_M (SIZE_A + SIZE_B)
 #define N 1024
 
-#define D 2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2*2
+#define D 2 
 #define BATCH_THRESHOLD 1024
 
 #define LENGTH_A (SIZE_A * sizeof(int))
