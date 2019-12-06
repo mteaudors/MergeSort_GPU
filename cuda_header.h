@@ -9,8 +9,8 @@
 #include <string>
 #include <ctime>
 
-#define SIZE_A 2*2*2*2*2*2*2*2*2
-#define SIZE_B 2*2*2*2*2*2*2*2*2
+#define SIZE_A 512
+#define SIZE_B 512
 #define SIZE_M (SIZE_A + SIZE_B)
 #define N 1024
 
