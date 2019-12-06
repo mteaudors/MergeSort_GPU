@@ -1,6 +1,6 @@
 all: build
 
-all: huffman merge_batch merge_sort merge_path_sort merge_path_sort_multiple merge_path_sort_parallel_small
+all: huffman merge_batch merge_sort merge_path_sort merge_path_sort_multiple merge_path_sort_parallel_small thomas_pcr
 
 huffman:
 	nvcc -o huffman.exe huffman.cu
@@ -15,6 +15,9 @@ merge_path_sort_multiple:
 	
 merge_path_sort_parallel_small:
 	nvcc -o merge_path_sort_parallel_small.exe merge_path_sort_parallel_small.cu
+
+thomas_pcr:
+	nvcc -o Thomas_PCR.exe Thomas_PCR.cu
 	
 
 exec:
