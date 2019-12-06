@@ -12,3 +12,4 @@ with open("time_record_merge_sort.txt","r") as f:
         line = f.readline()
 
 plt.plot(x,y)
+plt.show()
