@@ -14,8 +14,10 @@
 #define SIZE_M (SIZE_A + SIZE_B)
 #define N 1024
 
-#define D 2 
+#define D 0b100000000
 #define BATCH_THRESHOLD 1024
+#define USE_BATCH 1 // 0 : False ; everything else : True
+#define RECORD_TIME 1  // 0 : False ; everything else : True
 
 #define LENGTH_A (SIZE_A * sizeof(int))
 #define LENGTH_B (SIZE_B * sizeof(int))

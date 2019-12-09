@@ -233,7 +233,7 @@ void mergeSortGPU (int *M , int length, float *timer) {
 		// update the copy of M to take into account modifications of the previous iteration
 		testCUDA(cudaMemcpy(M_dev_copy, M_dev, D * sizeof(int), cudaMemcpyDeviceToDevice));
 		
-		if(merge_size <= BATCH_THRESHOLD) {
+		if(USE_BATCH && merge_size <= BATCH_THRESHOLD) {
 			// Small size => batch method
 
 			// dynamically compute the number of threads per block and the corresponding number of blocks
@@ -365,7 +365,8 @@ int main(int argc , char *argv[]) {
 	// general timer
     float TimerAdd = 0;
 
-    printf("Size of array : %d\n",D);
+	printf("Size of array : %d\n",D);
+	printf("Use Batch : %s\n",USE_BATCH ? "TRUE" : "FALSE");
 
 	// Random generation of the array to sort
     int* M = generate_unsorted_array(D);
@@ -377,6 +378,23 @@ int main(int argc , char *argv[]) {
 	check_array_sorted(M,D,"M");
 	
 	// print general duration of the sort
-    printf("===== Total time : %f ms =====\n", TimerAdd);
-    free(M);
+	printf("===== Total time : %f ms =====\n", TimerAdd);
+	
+	free(M);
+
+	if(RECORD_TIME) {
+		if(USE_BATCH) {
+			FILE *time_file = fopen("perfs/time_P1_batch.txt" , "a");
+			fprintf(time_file,"%d %f\n",D,TimerAdd);
+			fclose(time_file);
+		}
+		else {
+			FILE *time_file = fopen("perfs/time_P1_no_batch.txt" , "a");
+			fprintf(time_file,"%d %f\n",D,TimerAdd);
+			fclose(time_file);
+		}
+	}
+	
+	
+    
 }
