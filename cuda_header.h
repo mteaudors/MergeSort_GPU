@@ -12,7 +12,7 @@
 #define SIZE_A 512
 #define SIZE_B 512
 #define SIZE_M (SIZE_A + SIZE_B)
-#define N 1024
+#define N 1000
 
 #define D 0b100000000
 #define BATCH_THRESHOLD 1024
@@ -54,6 +54,18 @@ int* generate_array(int length) {
 	for (int i = 0; i < length; ++i)
 		arr[i] = i * (i+r);
 	return arr;
+}
+
+
+int *generate_array_batch(int length,int sub_length) {
+	int *arr = (int*)malloc(length*sizeof(int));
+	for (int k=0 ; k<length/sub_length ; ++k) {
+		int r = rand()%1000;
+		for(int i=0 ; i<sub_length ; ++i) 
+			arr[sub_length*k + i] = i * (i+r);
+	}
+	return arr;
+	
 }
 
 int* generate_unsorted_array(int length) {
@@ -103,6 +115,15 @@ void check_array_sorted(int *arr, int length, std::string name) {
 	printf("============================================================================\n");
 	printf("Array %s containing %d elements is sorted\n", name.c_str(), length);
 	printf("============================================================================\n");
+}
+
+bool check_array_sorted_no_print(int *arr, int length) {
+	for(int i=1; i<length; ++i) {
+		if(arr[i-1] > arr[i]) {
+			return false;
+        	}
+	}
+	return true;
 }
 
 #endif // CUDA_HEADER_H
